@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Nova Frontier — Doom Anchor Real-Time Scene</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020207}canvas{display:block}.hud{position:fixed;left:18px;top:16px;color:#e9ddff;font:600 13px system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 0 12px #8b5cf6}.sub{font-weight:400;opacity:.7;font-size:10px;margin-top:5px}
+</style>
+</head>
+<body>
+<div class="hud">Nova Frontier — Doom Anchor<div class="sub">Real-time cinematic prototype · original trailer asset</div></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x010106);
+scene.fog=new THREE.FogExp2(0x06020d,.0022);
+const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,3000);
+camera.position.set(0,38,150);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance',preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+document.body.appendChild(renderer.domElement);
+const composer=new EffectComposer(renderer); composer.addPass(new RenderPass(scene,camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),1.25,.55,.18));
+
+scene.add(new THREE.HemisphereLight(0x54447a,0x05050a,1.25));
+const key=new THREE.DirectionalLight(0xb8c9ff,4); key.position.set(-30,70,90); scene.add(key);
+const purple=new THREE.PointLight(0x9b4dff,90,260,1.4); purple.position.set(0,0,8); scene.add(purple);
+
+// Star field
+const starGeo=new THREE.BufferGeometry(); const starCount=5000; const p=new Float32Array(starCount*3);
+for(let i=0;i<p.length;i+=3){p[i]=(Math.random()-.5)*1800;p[i+1]=(Math.random()-.5)*1100;p[i+2]=-Math.random()*1600+200;}
+starGeo.setAttribute('position',new THREE.BufferAttribute(p,3));
+scene.add(new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xc9d1ff,size:.75,sizeAttenuation:true})));
+
+// Procedural placeholder geometry representing the Doom Anchor silhouette.
+// Replace this group with a licensed/original GLB model when the production mesh is ready.
+const ship=new THREE.Group(); scene.add(ship);
+const hullMat=new THREE.MeshStandardMaterial({color:0x11121b,metalness:.92,roughness:.27});
+const trimMat=new THREE.MeshStandardMaterial({color:0x29203b,metalness:.86,roughness:.2,emissive:0x16052e,emissiveIntensity:1.4});
+function wedge(scale,pos,rot=0){const g=new THREE.ConeGeometry(1,4,4); const m=new THREE.Mesh(g,hullMat);m.scale.set(scale[0],scale[1],scale[2]);m.position.set(...pos);m.rotation.z=Math.PI/4;m.rotation.x=Math.PI/2;m.rotation.y=rot;ship.add(m);return m;}
+wedge([17,23,5],[0,0,-15]); wedge([11,19,3.5],[-27,0,-4],-.18); wedge([11,19,3.5],[27,0,-4],.18);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(24,4.2,32,128),trimMat);ring.rotation.x=Math.PI/2;ship.add(ring);
+const ring2=new THREE.Mesh(new THREE.TorusGeometry(31,1.3,20,128),trimMat);ring2.rotation.x=Math.PI/2;ship.add(ring2);
+const coreMat=new THREE.MeshStandardMaterial({color:0xd9b4ff,emissive:0x8a20ff,emissiveIntensity:8,roughness:.12,metalness:.1});
+const core=new THREE.Mesh(new THREE.IcosahedronGeometry(8,4),coreMat);ship.add(core);
+
+// Energy arcs
+const arcMat=new THREE.LineBasicMaterial({color:0xc273ff,transparent:true,opacity:.78}); const arcs=[];
+for(let a=0;a<22;a++){const pts=[];const phase=Math.random()*Math.PI*2;for(let j=0;j<18;j++){const t=j/17;const r=8+t*18;pts.push(new THREE.Vector3(Math.cos(phase+t*1.1)*r+(Math.random()-.5)*2,(Math.random()-.5)*4,Math.sin(phase+t*1.1)*r+(Math.random()-.5)*2));}const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),arcMat.clone());ship.add(line);arcs.push(line);}
+
+// Beam, initially hidden; pulses during firing phase.
+const beamMat=new THREE.MeshBasicMaterial({color:0xb957ff,transparent:true,opacity:0});
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(1.4,2.7,650,24),beamMat);beam.rotation.x=Math.PI/2;beam.position.z=-325;scene.add(beam);
+const beamCore=new THREE.Mesh(new THREE.CylinderGeometry(.35,.6,650,16),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0}));beamCore.rotation.x=Math.PI/2;beamCore.position.z=-325;scene.add(beamCore);
+
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();
+ ship.rotation.y=Math.sin(t*.16)*.055; ship.rotation.z=Math.sin(t*.11)*.018;
+ ring.rotation.z=t*.12;ring2.rotation.z=-t*.075;core.rotation.y=t*.35;core.rotation.x=t*.17;
+ const charge=(Math.sin(t*.8)*.5+.5);core.scale.setScalar(1+charge*.12);coreMat.emissiveIntensity=5+charge*7;purple.intensity=55+charge*85;
+ arcs.forEach((x,i)=>{x.material.opacity=.25+.65*Math.max(0,Math.sin(t*3.2+i));x.rotation.y=t*(i%2?-.08:.08)});
+ // 12-second cinematic cycle: charge, fire, recover.
+ const phase=t%12;let fire=0;if(phase>6.8&&phase<9.1)fire=Math.sin(((phase-6.8)/2.3)*Math.PI);
+ beamMat.opacity=fire*.72;beamCore.material.opacity=fire*.95;beam.scale.x=beam.scale.z=1+fire*.9;
+ camera.position.x=Math.sin(t*.12)*18;camera.position.y=28+Math.sin(t*.17)*9;camera.position.z=145-Math.min(22,(t%18)*1.2);camera.lookAt(0,0,-8);
+ composer.render();}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
