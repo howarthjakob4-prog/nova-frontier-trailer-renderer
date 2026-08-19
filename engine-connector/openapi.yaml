@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Nova Frontier Engine Connector
+  version: 0.1.0
+  description: Controlled API for approved Nova Frontier engine operations.
+servers:
+  - url: https://YOUR-ENGINE-DOMAIN.example.com
+paths:
+  /health:
+    get:
+      operationId: getEngineHealth
+      summary: Check engine connector health
+      responses:
+        '200':
+          description: Connector health
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  version: { type: string }
+                  allowedCommands:
+                    type: array
+                    items: { type: string }
+  /command:
+    post:
+      operationId: runEngineCommand
+      summary: Submit an approved engine command
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command:
+                  type: string
+                  enum: [import_model, build_scene, render_trailer, run_sim, get_logs]
+                input:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '202':
+          description: Command accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId: { type: string }
+                  status: { type: string }
+                  statusUrl: { type: string }
+        '400':
+          description: Invalid command
+        '401':
+          description: Unauthorized
+  /jobs/{jobId}:
+    get:
+      operationId: getEngineJob
+      summary: Get command status, logs, and result
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Job state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Job not found
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
